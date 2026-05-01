@@ -1,20 +1,49 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Music2 } from "lucide-react";
+import { SearchBar } from "@/components/search-bar";
 import { SongList } from "@/components/song-list";
 import { useImageBase } from "@/components/runtime-config";
+import { useDebouncedValue } from "@/lib/hooks";
 import { useSearchSongs } from "@/lib/queries";
 
 export default function ArtistPage() {
+  // useSearchParams requires a Suspense boundary at build time; mirror the
+  // home page split (app/page.tsx).
+  return (
+    <Suspense fallback={null}>
+      <ArtistScreen />
+    </Suspense>
+  );
+}
+
+function ArtistScreen() {
   const params = useParams<{ name: string }>();
   const name = decodeURIComponent(params?.name ?? "");
 
-  // Peek at the first result to grab a singer picture (singer endpoint would
-  // be cleaner, but we already have the first song's photo and it's the same
-  // pic the search-for-this-artist flow shows elsewhere).
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlQ = searchParams.get("q") ?? "";
+
+  const [query, setQuery] = useState(urlQ);
+  const debouncedQuery = useDebouncedValue(query, 300);
+
+  // Sync ?q= to URL so reloads preserve the filter (mirrors app/page.tsx).
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (debouncedQuery) qs.set("q", debouncedQuery);
+    const next = qs.toString();
+    if (next !== searchParams.toString()) {
+      const path = `/artist/${encodeURIComponent(name)}`;
+      router.replace(next ? `${path}?${next}` : path, { scroll: false });
+    }
+  }, [debouncedQuery, name, router, searchParams]);
+
+  // Hero pic peek stays UNFILTERED — passing songName here would re-key the
+  // query on every keystroke and the photo would flicker/disappear.
   const { data } = useSearchSongs({ singer: name });
   const firstPic = data?.pages[0]?.songList[0]?.singerPic;
 
@@ -38,8 +67,11 @@ export default function ArtistPage() {
           </div>
         </div>
       </header>
+      <div className="px-4 pb-3">
+        <SearchBar value={query} onChange={setQuery} placeholder={`Search in ${name}...`} />
+      </div>
       <section className="flex-1">
-        <SongList singer={name} />
+        <SongList songName={debouncedQuery} singer={name} />
       </section>
     </>
   );
