@@ -1,11 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ListPlus, Loader2, Music2, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronsUp,
+  ListPlus,
+  Loader2,
+  Music2,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useAddPlaylistToQueue,
   useDeletePlaylist,
+  useKtvCommand,
   usePlaylistDetail,
   useRemoveSongFromPlaylist,
   useRenamePlaylist,
@@ -155,11 +165,28 @@ function PlaylistSongRow({
   index: number;
 }) {
   const removeSong = useRemoveSongFromPlaylist();
+  const cmd = useKtvCommand();
   const onRemove = () =>
     removeSong.mutate(
       { id: playlistId, songId: song.songId },
       {
         onSuccess: () => toast(`Removed · ${song.songName}`),
+        onError: (e) => toast(e.message, "error"),
+      },
+    );
+  const onAdd = () =>
+    cmd.mutate(
+      { cmd: "Add1", songId: song.songId },
+      {
+        onSuccess: () => toast(`Added · ${song.songName}`),
+        onError: (e) => toast(e.message, "error"),
+      },
+    );
+  const onPlayNext = () =>
+    cmd.mutate(
+      { cmd: "Pro1", songId: song.songId },
+      {
+        onSuccess: () => toast(`Playing next · ${song.songName}`),
         onError: (e) => toast(e.message, "error"),
       },
     );
@@ -186,6 +213,32 @@ function PlaylistSongRow({
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : (
           <Trash2 className="h-5 w-5" />
+        )}
+      </button>
+      <button
+        type="button"
+        aria-label={`Play next — ${song.songName}`}
+        disabled={cmd.isPending}
+        onClick={onPlayNext}
+        className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95 disabled:opacity-50"
+      >
+        {cmd.isPending ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <ChevronsUp className="h-5 w-5" />
+        )}
+      </button>
+      <button
+        type="button"
+        aria-label={`Add to queue — ${song.songName}`}
+        disabled={cmd.isPending}
+        onClick={onAdd}
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-all active:scale-95 disabled:opacity-50"
+      >
+        {cmd.isPending ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <Plus className="h-5 w-5" />
         )}
       </button>
     </div>
