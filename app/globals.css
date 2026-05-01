@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light theme — a softer off-white like Spotify's web light mode */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 9%;
+    --primary: 141 73% 42%; /* Spotify green #1DB954 */
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 42%; /* #6A6A6A */
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 141 73% 42%;
+    --radius: 0.75rem; /* chunkier corners */
+  }
+
+  /* Dark theme — Spotify's near-black + elevated surfaces */
+  .dark {
+    --background: 0 0% 7%; /* #121212 */
+    --foreground: 0 0% 100%;
+    --card: 0 0% 9%; /* #171717 */
+    --card-foreground: 0 0% 100%;
+    --primary: 141 73% 42%; /* Spotify green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 16%; /* #282828 elevated */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 70%; /* #B3B3B3 */
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 141 73% 42%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    overflow-x: hidden;
+    /* Suppress iOS white flash before JS applies .dark */
+    background-color: #121212;
+  }
+  body {
+    @apply bg-background text-foreground;
+    overscroll-behavior-y: contain;
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.01em;
+  }
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

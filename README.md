@@ -28,6 +28,23 @@ Dev server binds to `0.0.0.0:3000`. On the phone, open
   renders `<img src>` directly against this, so it must be reachable from
   the phone. Default: `${KTV_BASE_URL}/singer` (confirmed with
   `curl /singer/26940.jpg -> 200`).
+- `DATA_DIR` — where user playlist files are stored. Default `./data`.
+  In Docker, set `DATA_DIR=/data` and bind-mount the host's `./data`.
+
+## Run with Docker
+
+```bash
+docker build -t oreo-ktv .
+
+mkdir -p data
+docker run --rm -p 3001:3001 \
+  -e KTV_BASE_URL=http://192.168.50.150:8080 \
+  -v "$(pwd)/data:/data" \
+  oreo-ktv
+```
+
+Playlists are written to `./data/playlists/*.json` on the host and survive
+image rebuilds. Phones on the LAN open `http://<host-ip>:3001`.
 
 ## Architecture
 
@@ -59,4 +76,5 @@ Each new servlet needs:
 3. A React Query hook in `lib/queries.ts`.
 
 No other files need to change.
+
 # oreoktv
