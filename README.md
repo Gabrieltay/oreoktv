@@ -32,7 +32,18 @@ The KTV's own UI is a 2010-era TV remote nightmare. This is a phone-friendly rep
 - **Playlist detail screen** — rename, delete, remove songs, and **"Add all to queue"** which fans out `Add1` commands sequentially.
 - Atomic writes (tmp + rename), Zod-validated reads, UUID-only ids. A corrupted file is logged and skipped, not fatal.
 
+### Recently played
+
+- Every successful `Add1` is logged to `${DATA_DIR}/history.jsonl` (rolling). The **Recent** tab surfaces them as a virtual list — re-add to the queue with one tap. Powered by [lib/history-store.ts](lib/history-store.ts).
+
+### Runtime config (settings sheet)
+
+- Gear icon in the header opens a settings sheet where you can override the KTV machine's IP/port at runtime — no rebuild, no env-var redeploy. Useful when the KTV's DHCP lease moves. The override is stored in [lib/settings-store.ts](lib/settings-store.ts) and supersedes `KTV_BASE_URL`.
+
 ### Polish
+
+- **Optimistic queue mutations.** Add / remove / move-to-top reflect in the UI instantly and roll back on failure — no waiting for the next 3 s poll.
+- **Skeleton loaders** on queue, playlist detail, and recent views — no flash-of-empty before data lands.
 
 - Light/dark theme toggle (persisted; no-flash boot script in `<head>`).
 - iOS Safari tuned: viewport locked to no-zoom, `safe-area-inset-*` honored on tab bar + playback bar, no-zoom inputs.
@@ -156,23 +167,20 @@ Roughly ordered by ratio of value-to-effort.
 
 ### Quality-of-life on existing features
 
-- **Optimistic updates for queue mutations.** Right now Add/Remove/Move-to-top wait for the next 3 s poll before the UI reflects the change. Optimistic mutate + rollback on error would feel instant.
-- **Drag-to-reorder queue.** The KTV firmware can't reorder mid-queue, but we can emulate any reorder client-side as a sequence of `Del1` + `Pro1`/`Add1` ops. Risky — partial failures leave the queue in a weird state — so do it behind a "Reorder" mode with a single Apply button.
-- **Search history / recent songs.** Persist the last N queries in `localStorage`; surface as chips below the search bar when the input is empty.
 - **"Now playing" header on the playback bar.** The bar shows controls but not the current song's title. The data is already in `usePlaylist().queue[0]`.
-- **Skeleton loaders.** Currently the search/queue/playlist views flash empty before data lands. Replace with row skeletons.
+- **Drag-to-reorder queue.** The KTV firmware can't reorder mid-queue, but we can emulate any reorder client-side as a sequence of `Del1` + `Pro1`/`Add1` ops. Risky — partial failures leave the queue in a weird state — so do it behind a "Reorder" mode with a single Apply button.
+- **Search history.** Persist the last N _queries_ in `localStorage`; surface as chips below the search bar when the input is empty. (Distinct from the existing **Recently played** tab, which tracks songs added to the queue.)
 - **Long-press on a song row** → quick "Play next" (current behavior is "Add to top", but UX could distinguish "play immediately after current" from "jump to front of long queue").
 - **Empty/error states with retry buttons.** Failed network calls just toast; a banner with "Retry" inside the affected section is friendlier.
 
 ### New features
 
 - **Favorites / Liked Songs.** A built-in playlist that's always present. Heart button on every row. Reuses the existing playlist-store machinery.
-- **Recently played.** The KTV doesn't expose history, but we can log every successful `Add1` server-side to a rolling JSON file under `DATA_DIR/history.jsonl`, then expose it as a virtual playlist.
 - **Multi-select bulk actions.** Long-press a song to enter selection mode → bulk Add to Queue / bulk Add to Playlist.
 - **Playlist sharing via QR code.** Encode a playlist as a JSON blob → a URL → a QR. Anyone on the LAN scans it and imports.
 - **Playlist import/export.** Plain JSON download/upload for backup.
 - **Keypad / song-number entry.** Power users sometimes know the 6-digit `songId` and want to type it directly. A numpad screen that submits `Add1` instantly.
-- **Smart suggestions.** "People who queued X also queued Y" — derived from history, not the KTV. Useful at parties.
+- **Smart suggestions.** "People who queued X also queued Y" — derived from the existing history store, not the KTV. Useful at parties.
 - **Voice search.** Tap mic → Web Speech API → fills the search input. Big win on phones.
 - **Lyrics display.** The KTV plays the music; phones could show synced lyrics from a side service (musixmatch, etc.) for the singer to read off without looking at the TV.
 
