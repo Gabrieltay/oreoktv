@@ -62,6 +62,61 @@ docker run --rm -p 3001:3001 \
 
 Playlists in `./data/playlists/*.json` survive image rebuilds.
 
+## Deploy to a Raspberry Pi
+
+The intended home for this is a Pi on the same LAN as the KTV. There are two deploy paths depending on whether you're starting from scratch or pushing an update.
+
+### First-time install (run on the Pi)
+
+Clone the repo, then register a systemd service that builds the image and runs it on boot:
+
+```bash
+git clone <repo-url> ~/oreo-ktv
+cd ~/oreo-ktv
+sudo ./scripts/install-service.sh
+```
+
+Override defaults via env, e.g. `sudo KTV_BASE_URL=http://192.168.50.150:8080 ./scripts/install-service.sh`. Re-runnable.
+
+After install:
+
+```bash
+systemctl status oreo-ktv.service
+journalctl -u oreo-ktv.service -f
+```
+
+### Updates (build on Mac, push to Pi)
+
+Building `next build` on a Pi is slow and can OOM on small boards. The easier path is to build the image on your Mac (cross-compiled for `linux/arm64`), ship it over SSH, and restart the service:
+
+```bash
+./scripts/deploy.sh
+```
+
+That script ([scripts/deploy.sh](scripts/deploy.sh)):
+
+1. `docker buildx build --platform linux/arm64 --load` on the Mac
+2. `docker save | ssh pi 'docker load'` to ship the image over the LAN
+3. `ssh -t pi 'sudo systemctl restart oreo-ktv.service'` to swap the running container
+
+Defaults assume `gabriel@oreopi.local`. Override with env:
+
+```bash
+PI_HOST=raspberrypi.local PI_USER=pi ./scripts/deploy.sh
+```
+
+To make deploys fully unattended, set up SSH keys (`ssh-copy-id $PI_USER@$PI_HOST`) and grant passwordless sudo for the one restart command on the Pi:
+
+```bash
+echo "$USER ALL=(ALL) NOPASSWD: /bin/systemctl restart oreo-ktv.service" \
+  | sudo tee /etc/sudoers.d/oreo-ktv
+sudo chmod 440 /etc/sudoers.d/oreo-ktv
+```
+
+### Update in place (alternative — build on the Pi)
+
+If the Pi has enough RAM and you'd rather pull from git than push images, [scripts/update.sh](scripts/update.sh) does `git pull` + `docker build` + `systemctl restart`, and is safe to run from cron.
+
 ## Config
 
 `.env.local`:
