@@ -40,11 +40,18 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-mkdir -p "$DATA_DIR_HOST/playlists"
-chown -R "$RUN_USER":"$RUN_USER" "$DATA_DIR_HOST"
-
 echo "==> Building image"
 ( cd "$REPO_DIR" && docker build -t "$IMAGE_NAME" . )
+
+# The container runs as the in-image `app` user (not root, not $RUN_USER).
+# The bind-mount shadows the image's pre-chowned /data, so we must chown the
+# host directory to match the in-container UID/GID or writes will EACCES.
+APP_UID=$(docker run --rm "$IMAGE_NAME" id -u app)
+APP_GID=$(docker run --rm "$IMAGE_NAME" id -g app)
+echo "==> Container app uid:gid is $APP_UID:$APP_GID"
+
+mkdir -p "$DATA_DIR_HOST/playlists"
+chown -R "$APP_UID":"$APP_GID" "$DATA_DIR_HOST"
 
 UNIT_PATH="/etc/systemd/system/$SERVICE_NAME"
 echo "==> Writing $UNIT_PATH"
