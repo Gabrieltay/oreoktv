@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useKtvCommand, useMoveToTop, usePlaylist } from "@/lib/queries";
 import { toast } from "@/components/toaster";
 import type { QueueItem } from "@/lib/ktv-client";
+import { AddToPlaylistButton } from "@/components/add-to-playlist-button";
 import { cn } from "@/lib/utils";
 
 export function QueueList() {
@@ -89,6 +90,15 @@ function QueueRow({ item, index }: { item: QueueItem; index: number }) {
         <div className="truncate text-sm text-muted-foreground">{item.singer}</div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        <AddToPlaylistButton
+          song={{
+            songId: item.songId,
+            songName: item.songName,
+            singer: item.singer,
+            singerPic: "",
+            isCloud: false,
+          }}
+        />
         <ActionButton
           label={`Move ${item.songName} to top`}
           pending={pending}

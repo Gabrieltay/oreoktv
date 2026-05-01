@@ -16,6 +16,10 @@ IMAGE_TAG="${IMAGE_TAG:-latest}"
 PLATFORM="${PLATFORM:-linux/arm64}"
 SERVICE_NAME="${SERVICE_NAME:-oreo-ktv.service}"
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+# Host path bind-mounted to /data inside the container. Must match the path
+# used in install-service.sh (defaults to $REPO_DIR/data on the Pi, where
+# REPO_DIR there is the checkout under the run-user's home).
+DATA_DIR_HOST="${DATA_DIR_HOST:-/home/$PI_USER/apps/oreoktv/data}"
 
 SSH_TARGET="$PI_USER@$PI_HOST"
 IMAGE_REF="$IMAGE_NAME:$IMAGE_TAG"
@@ -54,6 +58,21 @@ docker buildx build \
 
 echo "==> Shipping image to $PI_HOST (this is the slow part)"
 docker save "$IMAGE_REF" | gzip | ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "gunzip | docker load"
+
+# The container runs as the in-image `app` user, but the bind-mount shadows
+# /data's in-image ownership. If the host dir's ownership has drifted (base
+# image bump, manual edits, restored backup), the app process will EACCES on
+# write. Re-chown to the current image's app uid/gid on every deploy so the
+# mount stays in sync with whatever the image expects.
+echo "==> Aligning $DATA_DIR_HOST ownership with image's app uid/gid"
+ssh -t "${SSH_OPTS[@]}" "$SSH_TARGET" "
+  set -e
+  APP_UID=\$(docker run --rm $IMAGE_REF id -u app)
+  APP_GID=\$(docker run --rm $IMAGE_REF id -g app)
+  echo \"    container app uid:gid is \$APP_UID:\$APP_GID\"
+  sudo mkdir -p $DATA_DIR_HOST/playlists
+  sudo chown -R \$APP_UID:\$APP_GID $DATA_DIR_HOST
+"
 
 echo "==> Restarting $SERVICE_NAME on $PI_HOST (sudo password may be prompted)"
 ssh -t "${SSH_OPTS[@]}" "$SSH_TARGET" "sudo systemctl restart $SERVICE_NAME"
