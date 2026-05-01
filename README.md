@@ -37,6 +37,7 @@ The KTV's own UI is a 2010-era TV remote nightmare. This is a phone-friendly rep
 - Light/dark theme toggle (persisted; no-flash boot script in `<head>`).
 - iOS Safari tuned: viewport locked to no-zoom, `safe-area-inset-*` honored on tab bar + playback bar, no-zoom inputs.
 - Tab bar: Search · Playlists · Queue.
+- **Installable as a PWA** — web manifest + service worker so the app adds to the home screen and launches in a standalone window with no browser chrome. Service worker caches the app shell and bypasses `/api/*` so KTV state stays fresh. Drop `icon-192.png` and `icon-512.png` into `public/icons/` to provide the install icons.
 
 ## Run
 
@@ -122,7 +123,6 @@ Roughly ordered by ratio of value-to-effort.
 
 ### Platform / infra
 
-- **PWA install** — `manifest.json` + a service worker so it adds to the home screen and gets a native-app feel. No offline (the KTV is on-LAN anyway), just install + standalone chrome.
 - **Multi-user awareness.** Today everyone shares one queue. A `userId` cookie + per-user "I queued this" badges would let people see whose pick is next without changing the KTV-side queue.
 - **Auth / room code.** Right now anyone on the Wi-Fi has full control. A 4-digit room code (set at boot, displayed on the host's screen) gates write commands.
 - **Tests.** No test runner is configured. At minimum: a Vitest suite around `lib/ktv-client.ts` (record fixtures from the real KTV, replay them) and `lib/playlist-store.ts` (atomic writes under concurrent access).
