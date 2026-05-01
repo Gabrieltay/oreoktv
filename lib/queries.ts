@@ -5,6 +5,7 @@ import type {
   CommandName,
   PlaybackCommand,
   Playlist,
+  QueueItem,
   SearchResponse,
   SingersResponse,
 } from "@/lib/ktv-client";
@@ -96,11 +97,16 @@ export function usePlaylist() {
   });
 }
 
-async function postCommand(cmd: CommandName, cmdValue?: string): Promise<void> {
+type AddMeta = Pick<PlaylistSong, "songName" | "singer" | "singerPic" | "isCloud">;
+
+async function postCommand(cmd: CommandName, cmdValue?: string, meta?: AddMeta): Promise<void> {
+  const payload: Record<string, unknown> = { cmd };
+  if (cmdValue !== undefined) payload.cmdValue = cmdValue;
+  if (cmd === "Add1" && meta) payload.meta = meta;
   const res = await fetch("/api/command", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(cmdValue !== undefined ? { cmd, cmdValue } : { cmd }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -108,14 +114,75 @@ async function postCommand(cmd: CommandName, cmdValue?: string): Promise<void> {
   }
 }
 
+/**
+ * Apply an in-place mutation to the cached playlist. Returns the previous
+ * value so onError can roll back. The poll (every 3 s) will reconcile any
+ * drift between our optimistic shape and the KTV's actual state.
+ */
+async function optimisticPlaylistMutate(
+  qc: ReturnType<typeof useQueryClient>,
+  fn: (queue: QueueItem[]) => QueueItem[],
+): Promise<{ previous: Playlist | undefined }> {
+  await qc.cancelQueries({ queryKey: ["playlist"] });
+  const previous = qc.getQueryData<Playlist>(["playlist"]);
+  if (previous) {
+    const queue = fn(previous.queue);
+    qc.setQueryData<Playlist>(["playlist"], { ...previous, queue, count: queue.length });
+  }
+  return { previous };
+}
+
+function rollbackPlaylist(
+  qc: ReturnType<typeof useQueryClient>,
+  ctx: { previous: Playlist | undefined } | undefined,
+) {
+  if (ctx?.previous) qc.setQueryData(["playlist"], ctx.previous);
+}
+
+/**
+ * Queue/playback song commands. Pass `item` (full PlaylistSong) on Add1/Pro1
+ * to enable optimistic insertion; for Add1 the item also gets persisted to
+ * the server-side history log so it shows up in Recently played. Without
+ * `item`, the optimistic step is skipped for adds. Del1 only needs songId.
+ */
 export function useKtvCommand() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ cmd, songId }: { cmd: CommandName; songId: string }) => postCommand(cmd, songId),
-    onSuccess: () => {
+    mutationFn: ({
+      cmd,
+      songId,
+      item,
+    }: {
+      cmd: CommandName;
+      songId: string;
+      item?: PlaylistSong;
+    }) => postCommand(cmd, songId, item),
+    onMutate: async ({ cmd, songId, item }) => {
+      if (cmd === "Add1" && item) {
+        return optimisticPlaylistMutate(qc, (q) => [...q, toQueueItem(item)]);
+      }
+      if (cmd === "Pro1" && item) {
+        return optimisticPlaylistMutate(qc, (q) => [toQueueItem(item), ...q]);
+      }
+      if (cmd === "Del1") {
+        return optimisticPlaylistMutate(qc, (q) => {
+          const i = q.findIndex((s) => s.songId === songId);
+          if (i < 0) return q;
+          return [...q.slice(0, i), ...q.slice(i + 1)];
+        });
+      }
+      return undefined;
+    },
+    onError: (_e, _vars, ctx) => rollbackPlaylist(qc, ctx),
+    onSettled: (_d, _e, vars) => {
       void qc.invalidateQueries({ queryKey: ["playlist"] });
+      if (vars.cmd === "Add1") void qc.invalidateQueries({ queryKey: ["recent"] });
     },
   });
+}
+
+function toQueueItem(s: PlaylistSong): QueueItem {
+  return { songId: s.songId, songName: s.songName, singer: s.singer };
 }
 
 /**
@@ -130,14 +197,18 @@ export function useKtvCommand() {
 export function useMoveToTop() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (songId: string) => {
-      await postCommand("Del1", songId);
-      await postCommand("Pro1", songId);
+    mutationFn: async (item: QueueItem) => {
+      await postCommand("Del1", item.songId);
+      await postCommand("Pro1", item.songId);
     },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["playlist"] });
-    },
-    onError: () => {
+    onMutate: (item) =>
+      optimisticPlaylistMutate(qc, (q) => {
+        const i = q.findIndex((s) => s.songId === item.songId);
+        const without = i < 0 ? q : [...q.slice(0, i), ...q.slice(i + 1)];
+        return [item, ...without];
+      }),
+    onError: (_e, _vars, ctx) => rollbackPlaylist(qc, ctx),
+    onSettled: () => {
       void qc.invalidateQueries({ queryKey: ["playlist"] });
     },
   });
@@ -278,6 +349,20 @@ export function useRemoveSongFromPlaylist() {
 }
 
 /**
+ * Server-logged history of every successful Add1, surfaced as a
+ * read-only virtual playlist. Invalidated on Add1 success so the list
+ * updates without polling.
+ */
+export function useRecentlyPlayed() {
+  return useQuery({
+    queryKey: ["recent"] as const,
+    queryFn: async () =>
+      jsonOrThrow<UserPlaylist>(await fetch("/api/history"), "Failed to load history"),
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
  * Bulk-enqueue every song in a playlist onto the live KTV queue. Sequential
  * because the KTV's CommandServlet doesn't tolerate parallel writes well, and
  * because surfacing a partial result is cleaner than fanning out.
@@ -288,13 +373,14 @@ export function useAddPlaylistToQueue() {
     mutationFn: async (songs: PlaylistSong[]) => {
       let added = 0;
       for (const s of songs) {
-        await postCommand("Add1", s.songId);
+        await postCommand("Add1", s.songId, s);
         added += 1;
       }
       return { added, total: songs.length };
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ["playlist"] });
+      void qc.invalidateQueries({ queryKey: ["recent"] });
     },
   });
 }

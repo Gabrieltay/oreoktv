@@ -1,15 +1,3 @@
-const DEFAULT_KTV_BASE_URL = "http://192.168.50.150:8080";
-const DEFAULT_IMAGE_BASE = `${DEFAULT_KTV_BASE_URL}/singer`;
-
-/** Server-only: the KTV servlet host. */
-export const KTV_BASE_URL = process.env.KTV_BASE_URL ?? DEFAULT_KTV_BASE_URL;
-
-/**
- * Client-safe: base URL for singer photos. The client renders <img src> directly
- * against the KTV, so this must be exposed via NEXT_PUBLIC_ prefix.
- */
-export const KTV_IMAGE_BASE = process.env.NEXT_PUBLIC_KTV_IMAGE_BASE ?? DEFAULT_IMAGE_BASE;
-
 export const PAGE_SIZE = 8;
 
 /**

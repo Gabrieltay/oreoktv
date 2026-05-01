@@ -5,6 +5,8 @@ import { TabBar } from "@/components/tab-bar";
 import { PlaybackBar } from "@/components/playback-bar";
 import { Toaster } from "@/components/toaster";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/components/theme-provider";
+import { RuntimeConfigProvider } from "@/components/runtime-config";
+import { getKtvBaseUrl, imageBaseFor } from "@/lib/server-config";
 
 export const metadata: Metadata = {
   title: "Oreo KTV",
@@ -23,7 +25,8 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const ktvBaseUrl = await getKtvBaseUrl();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -31,16 +34,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="antialiased">
         <ThemeProvider>
-          <QueryProvider>
-            <div className="mx-auto flex min-h-[100dvh] max-w-xl flex-col">
-              <TabBar />
-              <main className="flex flex-1 flex-col pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
-                {children}
-              </main>
-            </div>
-            <PlaybackBar />
-            <Toaster />
-          </QueryProvider>
+          <RuntimeConfigProvider value={{ imageBase: imageBaseFor(ktvBaseUrl) }}>
+            <QueryProvider>
+              <div className="mx-auto flex min-h-[100dvh] max-w-xl flex-col">
+                <TabBar />
+                <main className="flex flex-1 flex-col pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+                  {children}
+                </main>
+              </div>
+              <PlaybackBar />
+              <Toaster />
+            </QueryProvider>
+          </RuntimeConfigProvider>
         </ThemeProvider>
       </body>
     </html>

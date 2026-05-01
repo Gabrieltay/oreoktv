@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight, Music2 } from "lucide-react";
-import { KTV_IMAGE_BASE } from "@/lib/config";
+import { useImageBase } from "@/components/runtime-config";
 import type { Singer } from "@/lib/ktv-client";
 
 export function SingerRow({ singer }: { singer: Singer }) {
@@ -24,6 +24,7 @@ export function SingerRow({ singer }: { singer: Singer }) {
 
 function SingerAvatar({ pic }: { pic: string }) {
   const [broken, setBroken] = useState(false);
+  const imageBase = useImageBase();
   if (!pic || broken) {
     return (
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
@@ -34,7 +35,7 @@ function SingerAvatar({ pic }: { pic: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- KTV image host is configured at runtime (LAN IP); next/image's build-time remotePatterns don't fit.
     <img
-      src={`${KTV_IMAGE_BASE}/${pic}`}
+      src={`${imageBase}/${pic}`}
       alt=""
       loading="lazy"
       onError={() => setBroken(true)}

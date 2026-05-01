@@ -74,7 +74,7 @@ function QueueRow({ item, index }: { item: QueueItem; index: number }) {
     );
 
   const onMoveToTop = () =>
-    moveToTop.mutate(item.songId, {
+    moveToTop.mutate(item, {
       onSuccess: () => toast(`Moved to top · ${item.songName}`),
       onError: (e) => toast(e.message, "error"),
     });

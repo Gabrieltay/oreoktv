@@ -1,12 +1,16 @@
 import { z, type ZodType } from "zod";
-import { KTV_BASE_URL } from "@/lib/config";
+import { getKtvBaseUrl } from "@/lib/server-config";
 
 /**
- * The KTV at KTV_BASE_URL exposes JSONP-wrapped Java servlets. This module is
- * the single adapter between that quirky API and the rest of the app:
+ * The KTV exposes JSONP-wrapped Java servlets at a configurable base URL.
+ * This module is the single adapter between that quirky API and the rest
+ * of the app:
  *  - strips the JSONP callback wrapper
  *  - validates response shape with Zod
  *  - normalizes SHOUTING_CASE field names to camelCase via .transform()
+ *
+ * The base URL is resolved per request via `getKtvBaseUrl()` so the
+ * in-app settings sheet can change it without a restart.
  *
  * All new servlets (queue, playback, volume) should be added here as
  * `{schema, fn}` pairs — no other file in the app should know about JSONP or
@@ -27,6 +31,7 @@ async function fetchJsonp<T>(
   path: string,
   params: Record<string, string | number | undefined>,
   schema: ZodType<T>,
+  baseUrlOverride?: string,
 ): Promise<T> {
   const callback = `jQuery_ksing_${Date.now()}`;
   const qs = new URLSearchParams({ jsonpCallback: callback });
@@ -36,7 +41,8 @@ async function fetchJsonp<T>(
   }
   qs.set("_", String(Date.now()));
 
-  const url = `${KTV_BASE_URL}${path}?${qs.toString()}`;
+  const baseUrl = baseUrlOverride ?? (await getKtvBaseUrl());
+  const url = `${baseUrl}${path}?${qs.toString()}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`KTV ${path} returned ${res.status}`);
@@ -188,6 +194,19 @@ export function getPlaylist(): Promise<Playlist> {
     "/PlaylistServlet",
     { onSelectPage: "true", type: "1" },
     playlistResponseSchema,
+  );
+}
+
+/**
+ * Validate that a candidate base URL responds to /PlaylistServlet correctly.
+ * Used by the settings save flow to refuse a bad IP before persisting it.
+ */
+export function pingKtv(baseUrl: string): Promise<Playlist> {
+  return fetchJsonp(
+    "/PlaylistServlet",
+    { onSelectPage: "true", type: "1" },
+    playlistResponseSchema,
+    baseUrl,
   );
 }
 

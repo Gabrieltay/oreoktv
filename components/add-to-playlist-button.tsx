@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { BookmarkPlus, ListMusic, Loader2, Plus, X } from "lucide-react";
 import { useAddSongToPlaylist, useCreatePlaylist, usePlaylists } from "@/lib/queries";
 import type { PlaylistSong } from "@/lib/playlist-types";
-import type { Song } from "@/lib/ktv-client";
 import { toast } from "@/components/toaster";
 import { cn } from "@/lib/utils";
 
-export function AddToPlaylistButton({ song }: { song: Song }) {
+export function AddToPlaylistButton({ song }: { song: PlaylistSong }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -26,7 +25,7 @@ export function AddToPlaylistButton({ song }: { song: Song }) {
   );
 }
 
-function PlaylistPickerSheet({ song, onClose }: { song: Song; onClose: () => void }) {
+function PlaylistPickerSheet({ song, onClose }: { song: PlaylistSong; onClose: () => void }) {
   const { data, isLoading } = usePlaylists();
   const addSong = useAddSongToPlaylist();
   const create = useCreatePlaylist();
@@ -45,13 +44,7 @@ function PlaylistPickerSheet({ song, onClose }: { song: Song; onClose: () => voi
     };
   }, [onClose]);
 
-  const payload: PlaylistSong = {
-    songId: song.songId,
-    songName: song.songName,
-    singer: song.singer,
-    singerPic: song.singerPic,
-    isCloud: song.isCloud,
-  };
+  const payload: PlaylistSong = song;
 
   const onPick = (id: string, playlistName: string) => {
     addSong.mutate(

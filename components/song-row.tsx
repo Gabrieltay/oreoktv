@@ -13,7 +13,7 @@ export function SongRow({ song }: { song: Song }) {
   const cmd = useKtvCommand();
   const onAdd = () =>
     cmd.mutate(
-      { cmd: "Add1", songId: song.songId },
+      { cmd: "Add1", songId: song.songId, item: song },
       {
         onSuccess: () => toast(`Added · ${song.songName}`),
         onError: (e) => toast(e.message, "error"),
@@ -21,7 +21,7 @@ export function SongRow({ song }: { song: Song }) {
     );
   const onPlayNext = () =>
     cmd.mutate(
-      { cmd: "Pro1", songId: song.songId },
+      { cmd: "Pro1", songId: song.songId, item: song },
       {
         onSuccess: () => toast(`Playing next · ${song.songName}`),
         onError: (e) => toast(e.message, "error"),

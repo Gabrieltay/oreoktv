@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendCommand } from "@/lib/ktv-client";
+import { recordAdd } from "@/lib/history-store";
 
 export const dynamic = "force-dynamic";
 
+const metaSchema = z.object({
+  songName: z.string(),
+  singer: z.string(),
+  singerPic: z.string().optional().default(""),
+  isCloud: z.boolean().optional().default(false),
+});
+
 const bodySchema = z.discriminatedUnion("cmd", [
   z.object({
-    cmd: z.enum(["Add1", "Pro1", "Del1"]),
+    cmd: z.literal("Add1"),
+    cmdValue: z.string().min(1),
+    // Optional so older clients don't break; without it the song is queued
+    // on the KTV but won't appear in Recently played.
+    meta: metaSchema.optional(),
+  }),
+  z.object({
+    cmd: z.enum(["Pro1", "Del1"]),
     cmdValue: z.string().min(1),
   }),
   z.object({
@@ -33,6 +48,9 @@ export async function POST(req: Request) {
   }
   try {
     await sendCommand(body.cmd, "cmdValue" in body ? body.cmdValue : undefined);
+    if (body.cmd === "Add1" && body.meta) {
+      await recordAdd({ songId: body.cmdValue, ...body.meta }, new Date().toISOString());
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";

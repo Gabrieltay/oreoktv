@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Music2 } from "lucide-react";
 import { SongList } from "@/components/song-list";
-import { KTV_IMAGE_BASE } from "@/lib/config";
+import { useImageBase } from "@/components/runtime-config";
 import { useSearchSongs } from "@/lib/queries";
 
 export default function ArtistPage() {
@@ -47,6 +47,7 @@ export default function ArtistPage() {
 
 function ArtistHero({ pic }: { pic: string | undefined }) {
   const [broken, setBroken] = useState(false);
+  const imageBase = useImageBase();
   if (!pic || broken) {
     return (
       <div className="flex h-36 w-36 items-center justify-center rounded-full bg-secondary text-muted-foreground shadow-xl">
@@ -57,7 +58,7 @@ function ArtistHero({ pic }: { pic: string | undefined }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- KTV image host is configured at runtime (LAN IP); next/image's build-time remotePatterns don't fit.
     <img
-      src={`${KTV_IMAGE_BASE}/${pic}`}
+      src={`${imageBase}/${pic}`}
       alt=""
       loading="lazy"
       onError={() => setBroken(true)}
