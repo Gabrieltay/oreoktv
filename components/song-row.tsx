@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronsUp, Cloud, Loader2, Music2, Plus } from "lucide-react";
+import { ChevronsUp, Cloud, Loader2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { KTV_IMAGE_BASE } from "@/lib/config";
 import type { Song } from "@/lib/ktv-client";
 import { useKtvCommand } from "@/lib/queries";
 import { toast } from "@/components/toaster";
 import { cn } from "@/lib/utils";
 import { AddToPlaylistButton } from "@/components/add-to-playlist-button";
+import { SingerArtwork } from "@/components/singer-artwork";
 
 export function SongRow({ song }: { song: Song }) {
   const cmd = useKtvCommand();
@@ -96,26 +95,5 @@ function SongAction({
     >
       {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : children}
     </button>
-  );
-}
-
-function SingerArtwork({ pic }: { pic: string }) {
-  const [broken, setBroken] = useState(false);
-  if (!pic || broken) {
-    return (
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
-        <Music2 className="h-5 w-5" />
-      </div>
-    );
-  }
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- KTV image host is configured at runtime (LAN IP); next/image's build-time remotePatterns don't fit.
-    <img
-      src={`${KTV_IMAGE_BASE}/${pic}`}
-      alt=""
-      loading="lazy"
-      onError={() => setBroken(true)}
-      className="h-12 w-12 shrink-0 rounded-md bg-secondary object-cover"
-    />
   );
 }
