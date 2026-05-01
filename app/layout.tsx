@@ -6,11 +6,22 @@ import { PlaybackBar } from "@/components/playback-bar";
 import { Toaster } from "@/components/toaster";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/components/theme-provider";
 import { RuntimeConfigProvider } from "@/components/runtime-config";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { getKtvBaseUrl, imageBaseFor } from "@/lib/server-config";
 
 export const metadata: Metadata = {
   title: "Oreo KTV",
   description: "KTV remote control",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-512.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Oreo KTV",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
@@ -44,6 +55,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
               </div>
               <PlaybackBar />
               <Toaster />
+              <ServiceWorkerRegister />
             </QueryProvider>
           </RuntimeConfigProvider>
         </ThemeProvider>
