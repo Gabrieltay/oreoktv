@@ -1,9 +1,9 @@
-FROM node:20-alpine AS base
-RUN corepack enable
+FROM node:24-alpine AS base
+RUN corepack enable && corepack prepare pnpm@11.0.8 --activate
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
@@ -37,4 +37,4 @@ RUN chown -R app:app /app
 USER app
 
 EXPOSE 3001
-CMD ["pnpm", "start"]
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-H", "0.0.0.0", "-p", "3001"]
