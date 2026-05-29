@@ -6,6 +6,7 @@ import {
   Mic,
   MicOff,
   Minus,
+  Music,
   Pause,
   Play,
   Plus,
@@ -124,6 +125,14 @@ function SoundDrawer({
           onDown={() => onRun("Mic_down", "Mic −")}
           onUp={() => onRun("Mic_up", "Mic +")}
         />
+        <SoundRow
+          label="Key"
+          icon={<Music className="h-5 w-5" />}
+          pending={pending}
+          onDown={() => onRun("Tone_down", "Key −")}
+          onUp={() => onRun("Tone_up", "Key +")}
+          onReset={() => onRun("Tone_nom", "Key reset")}
+        />
         <button
           type="button"
           aria-pressed={isMuted}
@@ -159,12 +168,14 @@ function SoundRow({
   pending,
   onDown,
   onUp,
+  onReset,
 }: {
   label: string;
   icon: React.ReactNode;
   pending: boolean;
   onDown: () => void;
   onUp: () => void;
+  onReset?: () => void;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -172,6 +183,11 @@ function SoundRow({
         {icon}
         <span>{label}</span>
       </div>
+      {onReset && (
+        <StepButton label={`${label} reset`} pending={pending} onClick={onReset}>
+          <RotateCcw className="h-5 w-5" />
+        </StepButton>
+      )}
       <StepButton label={`${label} down`} pending={pending} onClick={onDown}>
         <Minus className="h-5 w-5" />
       </StepButton>

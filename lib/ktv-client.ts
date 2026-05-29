@@ -239,7 +239,10 @@ export type PlaybackCommand =
   | "Music_up" // music volume +1 step
   | "Music_down" // music volume -1 step
   | "Mic_up" // mic volume +1 step
-  | "Mic_down"; // mic volume -1 step
+  | "Mic_down" // mic volume -1 step
+  | "Tone_up" // key/pitch +1 semitone
+  | "Tone_down" // key/pitch -1 semitone
+  | "Tone_nom"; // reset key/pitch to default (0)
 
 export type CommandName = SongCommand | PlaybackCommand;
 // Note: Pro2 (move existing queue item to top) exists but is broken in the

@@ -35,6 +35,9 @@ const bodySchema = z.discriminatedUnion("cmd", [
       "Music_down",
       "Mic_up",
       "Mic_down",
+      "Tone_up",
+      "Tone_down",
+      "Tone_nom",
     ]),
   }),
 ]);
