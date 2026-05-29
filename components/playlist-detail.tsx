@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -9,6 +10,7 @@ import {
   Music2,
   Pencil,
   Plus,
+  Shuffle,
   Trash2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,12 +27,23 @@ import { toast } from "@/components/toaster";
 import { cn } from "@/lib/utils";
 import { SingerArtwork } from "@/components/singer-artwork";
 
+/** Fisher-Yates. Returns a new array; never mutates the input. */
+function shuffle<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 export function PlaylistDetail({ id }: { id: string }) {
   const router = useRouter();
   const { data, isLoading, isError, error } = usePlaylistDetail(id);
   const rename = useRenamePlaylist();
   const remove = useDeletePlaylist();
   const addAll = useAddPlaylistToQueue();
+  const [shuffleOn, setShuffleOn] = useState(false);
 
   if (isLoading) {
     return (
@@ -76,8 +89,12 @@ export function PlaylistDetail({ id }: { id: string }) {
 
   const onAddAll = () => {
     if (data.songs.length === 0) return;
-    addAll.mutate(data.songs, {
-      onSuccess: ({ added, total }) => toast(`Queued ${added}/${total} songs`),
+    const songs = shuffleOn ? shuffle(data.songs) : data.songs;
+    addAll.mutate(songs, {
+      onSuccess: ({ added, total }) =>
+        toast(
+          shuffleOn ? `Shuffled ${added}/${total} into queue` : `Queued ${added}/${total} songs`,
+        ),
       onError: (e) => toast(e.message, "error"),
     });
   };
@@ -116,12 +133,27 @@ export function PlaylistDetail({ id }: { id: string }) {
         </button>
       </div>
 
-      <div className="px-4 pb-3">
+      <div className="flex items-center gap-2 px-4 pb-3">
+        <button
+          type="button"
+          onClick={() => setShuffleOn((v) => !v)}
+          disabled={data.songs.length === 0}
+          aria-label="Shuffle order when adding to queue"
+          aria-pressed={shuffleOn}
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all active:scale-95 disabled:opacity-50",
+            shuffleOn
+              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          )}
+        >
+          <Shuffle className="h-4 w-4" />
+        </button>
         <button
           type="button"
           onClick={onAddAll}
           disabled={data.songs.length === 0 || addAll.isPending}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all active:scale-95 disabled:opacity-50"
+          className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all active:scale-95 disabled:opacity-50"
         >
           {addAll.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
