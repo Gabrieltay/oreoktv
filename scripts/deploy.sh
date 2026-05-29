@@ -77,5 +77,17 @@ ssh -t "${SSH_OPTS[@]}" "$SSH_TARGET" "
 echo "==> Restarting $SERVICE_NAME on $PI_HOST (sudo password may be prompted)"
 ssh -t "${SSH_OPTS[@]}" "$SSH_TARGET" "sudo systemctl restart $SERVICE_NAME"
 
+# Each `docker load` reassigns the :latest tag to the new image, orphaning the
+# previous one as a dangling <none> image on the Pi. Reap those (plus stale
+# build cache) now that the new image is live. Runs after restart so a failed
+# deploy never deletes the image still in use.
+echo "==> Pruning dangling images + build cache on $PI_HOST"
+ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "docker image prune -f && docker builder prune -f"
+
+# Same cleanup on this Mac: every `buildx --load` leaves the old local image
+# dangling, and buildx accumulates cache.
+echo "==> Pruning dangling images + build cache on this Mac"
+docker image prune -f && docker builder prune -f
+
 echo "==> Done. Tail logs with:"
 echo "    ssh $SSH_TARGET 'journalctl -u $SERVICE_NAME -f'"

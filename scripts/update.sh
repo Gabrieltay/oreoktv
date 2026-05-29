@@ -30,4 +30,10 @@ docker build -t "$IMAGE_NAME" .
 echo "==> Restarting $SERVICE_NAME"
 sudo systemctl restart "$SERVICE_NAME"
 
+# The rebuild moved the $IMAGE_NAME tag to the new image, leaving the previous
+# one as a dangling <none> image. Reap it (and stale build cache) after the
+# restart so the running service is never left without its image.
+echo "==> Pruning dangling images + build cache"
+docker image prune -f && docker builder prune -f
+
 echo "==> Done."
